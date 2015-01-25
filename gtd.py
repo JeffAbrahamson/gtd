@@ -3,8 +3,6 @@
 """Functions for reading and simple manipulation of gtd data."""
 
 from glob import glob
-import matplotlib.pyplot as plt
-import numpy as np
 from os import getenv
 import pandas as pd
 from sys import argv
@@ -20,11 +18,11 @@ def get_gtd_labels(path):
     """
     prefix = path + '/gtd_'
     gtd_labels = glob_and_read_dataframes(prefix)
-    df = pd.DataFrame()
+    final_df = pd.DataFrame()
     for host, host_df in gtd_labels.items():
         host_df['hostname'] = host
-        df = df.append(host_df)
-    return df
+        final_df = final_df.append(host_df)
+    return final_df
 
 def read_all_by_host(path, hostname):
     """Read all gtd files for a given host.
@@ -45,12 +43,12 @@ def read_all_by_host(path, hostname):
     """
     prefix = '{path}/{hostname}_'.format(path=path, hostname=hostname)
     observations = glob_and_read_dataframes(prefix)
-    df = pd.DataFrame()
+    final_df = pd.DataFrame()
     for session, session_df in observations.items():
         session_df['hostname'] = hostname
         session_df['session'] = session
-        df = df.append(session_df)
-    return df
+        final_df = final_df.append(session_df)
+    return final_df
 
 def glob_and_read_dataframes(prefix):
     """Glob all files starting with prefix and import to dataframes.
@@ -70,14 +68,14 @@ def glob_and_read_dataframes(prefix):
     for filename in filenames:
         if filename.startswith(prefix):
             key = filename[len(prefix):]
-            df = pd.read_csv(filename, sep=' ', names=['time', 'label'])
-            df['datetime'] = pd.to_datetime(df['time'], unit='s')
-            labels_by_key[key] = df
+            this_df = pd.read_csv(filename, sep=' ', names=['time', 'label'])
+            this_df['datetime'] = pd.to_datetime(this_df['time'], unit='s')
+            labels_by_key[key] = this_df
         else:
             print('Error: filename "{filename}" has bad format: ignored.'.format(filename=filename))
     return labels_by_key
 
-def read(data_dir):
+def read(path):
     """Read all the gtd data available.
 
     Return a dictionary, with elements
@@ -90,16 +88,16 @@ def read(data_dir):
     window that is active at observation time.
 
     """
-    df_labels = get_gtd_labels(data_dir)
+    df_labels = get_gtd_labels(path)
     df_tasks = pd.DataFrame()
     hostnames = df_labels['hostname'].unique()
     for hostname in hostnames:
-        df_tasks = df_tasks.append(read_all_by_host(data_dir, hostname))
+        df_tasks = df_tasks.append(read_all_by_host(path, hostname))
     return {'labels': df_labels,
             'tasks': df_tasks}
 
-# The main section is not particularly useful except as documentation.
-if __name__ == '__main__':
+def main():
+    """The main section is not particularly useful except as documentation."""
     if len(argv) > 1:
         data_dir = argv[1]
     else:
@@ -111,3 +109,6 @@ if __name__ == '__main__':
                num_tasks=len(dfd['tasks']),
                num_hosts=len(dfd['labels']['hostname'].unique()),
            ))
+
+if __name__ == '__main__':
+    main()
