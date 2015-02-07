@@ -1,114 +1,150 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 """Functions for reading and simple manipulation of gtd data."""
 
+import datetime
 from glob import glob
+import numpy as np
 from os import getenv
 import pandas as pd
+import re
 from sys import argv
 
-def get_gtd_labels(path):
+def get_hostnames(path):
+    """Return a list of all hostnames and all data files participating in gtd.
+    """
+    all_filenames = glob(path + '/*')
+    host_pattern = re.compile('{p}/([a-z]*)__(.*)'.format(p=path))
+    hosts = set()
+    for filename in all_filenames[:5]:
+        host_match = re.match(host_pattern, filename)
+        if host_match is not None:
+            hosts.add(host_match.groups()[0])
+    hosts.discard('gtd')
+    return hosts, all_filenames
+
+def read_dataframe(filename):
+    """Read a single file and return its canonical dataframe.
+
+    The file format should be time (in seconds since the epoch), a
+    space, and then text (which may contain spaces.
+
+    """
+    with open(filename, 'rb') as file_read_ptr:
+        contents = file_read_ptr.read()
+    try:
+        lines = contents.decode('utf-8').split('\n')
+    except UnicodeDecodeError:
+        lines = contents.decode('iso-8859-15').split('\n')
+    field_array = [line.split(sep=' ', maxsplit=1)
+                   for line in lines]
+    fields = [{'time': fields[0], 'label': fields[1] if len(fields) > 1 else ''}
+              for fields in field_array
+              if fields != ['']]
+    df = pd.DataFrame(fields)
+    df['datetime'] = df.apply(
+        lambda row: datetime.datetime.fromtimestamp(int(row['time'])),
+        axis=1)
+    return df
+
+def get_labels(filenames):
     """Read the gtd_* files.
 
     Return a DataFrame with the following columns:
       hostname - the host on which the label was noted
-      time - seconds since epoch at which the label was noted
+      time     - seconds since epoch at which the label was noted
       datetime - python datetime at which label was noted
-      label - the user-supplied label (task name)
-    """
-    prefix = path + '/gtd_'
-    gtd_labels = glob_and_read_dataframes(prefix)
-    final_df = pd.DataFrame()
-    for host, host_df in gtd_labels.items():
-        host_df['hostname'] = host
-        final_df = final_df.append(host_df)
-    return final_df
-
-def read_all_by_host(path, hostname):
-    """Read all gtd files for a given host.
-
-    Return a single dataframe with these columns:
-      time - seconds since epoch of observation
-      datetime - python datetime of observation
-      task - observed task
-      hostname - host on which task was observed
-      session - a string identifying the session
-
-    Sessions are currently identified by strings representing seconds
-    since the epoch from which the session began.  A session
-    represents user time at the keyboard, starting at screen unlock
-    (or login) and ending at screen lock.  These details shouldn't
-    matter here.
+      label    - the user-supplied or observed label (task name)
 
     """
-    prefix = '{path}/{hostname}_'.format(path=path, hostname=hostname)
-    observations = glob_and_read_dataframes(prefix)
-    final_df = pd.DataFrame()
-    for session, session_df in observations.items():
-        session_df['hostname'] = hostname
-        session_df['session'] = session
-        final_df = final_df.append(session_df)
-    return final_df
-
-def glob_and_read_dataframes(prefix):
-    """Glob all files starting with prefix and import to dataframes.
-
-    Glob all the files.
-    Read each and stick in a dataframe.
-    Return a dictionary mapping keys (trailing parts of filenames, to be
-    interpretted by the caller) to dataframes.
-
-    The returned dataframes have the following columns:
-      time
-      datetime
-      label
-    """
-    filenames = glob(prefix + '*')
-    labels_by_key = {}
+    df = None
+    host_pattern = re.compile('^.*/gtd_')
     for filename in filenames:
-        if filename.startswith(prefix):
-            key = filename[len(prefix):]
-            this_df = pd.read_csv(filename, sep=' ', names=['time', 'label'])
-            this_df['datetime'] = pd.to_datetime(this_df['time'], unit='s')
-            labels_by_key[key] = this_df
-        else:
-            print('Error: filename "{filename}" has bad format: ignored.'.format(filename=filename))
-    return labels_by_key
+        host = re.sub(host_pattern, '', filename)
+        if host != filename:
+            this_df = read_dataframe(filename)
+            this_df['hostname'] = host
+            if df is None:
+                df = this_df
+            else:
+                df = df.append(this_df)
+    return df
 
-def read(path):
+def get_tasks(filenames):
+    """Read the host__time files.
+
+    Return a DataFrame with the following columns:
+      hostname - the host on which the label was noted
+      time     - seconds since epoch at which the label was noted
+      datetime - python datetime at which label was noted
+      label    - the user-supplied or observed label (task name)
+
+    """
+    dfs = []
+    task_pattern = re.compile('^.*/([^/]*)__(.*)')
+    for filename in filenames:
+        task_match = re.match(task_pattern, filename)
+        if task_match is not None:
+            host = task_match.groups()[0]
+            # And task_match.groups()[1] is the session start time
+            this_df = read_dataframe(filename)
+            this_df['hostname'] = host
+            dfs.append(this_df)
+    return pd.concat(dfs)
+    
+def gtd_read(data_dir):
     """Read all the gtd data available.
+
+    Path is the directory in which gtd data files live.
+
+    The gtd data files are of two types: label data and task data.
+    Labels are user-provided names for the purposes of semi-supervised
+    learning (or providing names after unsupervised learning.  Tasks
+    are observations of my behaviour.
+
+    Label data files are named 'gtd_<hostname>' and contain time (in
+    seconds since the epoch), a space, and the name of the task that I
+    think I was performing at that time.  The task name itself could
+    contain spaces.
+
+    Task data files are named '<machine>__<session-start-time>'.  The
+    session start time has format YYYY-MM-DD_HHMMSS.  The file
+    contents have format time (in seconds since the epoch), a space,
+    and the active window title at that time.  The active window title
+    may have spaces.
 
     Return a dictionary, with elements
       'labels' -> dataframe of (hostname, time, datetime, label)
       'tasks'  -> dataframe of (hostname, time, datetime, taskname)
 
-    Labels are user-provided names for the purposes of semi-supervised
-    learning (or providing names after unsupervised learning.  Tasks
-    are computer generated, currently the name of the application
-    window that is active at observation time.
+    The datetime field is in seconds since the epoch.
 
     """
-    df_labels = get_gtd_labels(path)
-    df_tasks = pd.DataFrame()
-    hostnames = df_labels['hostname'].unique()
-    for hostname in hostnames:
-        df_tasks = df_tasks.append(read_all_by_host(path, hostname))
-    return {'labels': df_labels,
-            'tasks': df_tasks}
+    hosts, filenames = get_hostnames(data_dir)
+    labels = get_labels(filenames)
+    tasks = get_tasks(filenames)
+    return {'labels': labels,
+            'tasks':  tasks}
+
+def gtd_data_directory():
+    """Return the name of the canonical data directory.
+    """
+    return '{home}/data/gtd'.format(home=getenv('HOME'))
 
 def main():
     """The main section is not particularly useful except as documentation."""
     if len(argv) > 1:
         data_dir = argv[1]
     else:
-        data_dir = '{home}/data/gtd'.format(home=getenv('HOME'))
-    dfd = read(data_dir)
-    print(('Read {num_labels} user-recorded labels and {num_tasks} ' +
-           'recorded tasks on {num_hosts} hosts.').format(
-               num_labels=len(dfd['labels']),
-               num_tasks=len(dfd['tasks']),
-               num_hosts=len(dfd['labels']['hostname'].unique()),
-           ))
+        data_dir = gtd_data_directory()
+    if True:
+        dfd = gtd_read(data_dir)
+        print(('Read {num_labels} user-recorded labels and {num_tasks} ' +
+               'recorded tasks on {num_hosts} hosts.').format(
+                   num_labels=len(dfd['labels']),
+                   num_tasks=len(dfd['tasks']),
+                   num_hosts=len(dfd['labels']['hostname'].unique()),
+               ))
 
 if __name__ == '__main__':
     main()

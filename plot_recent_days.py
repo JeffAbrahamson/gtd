@@ -1,0 +1,80 @@
+#!/usr/bin/env python3
+
+"""Generate a plot of my recent time usage at my computer.
+
+If a first and numeric argument is present, it is the number of days of
+history to show.  The default is ten.
+
+If a second and third arguments X and Y are present, generate a png with
+dimensions X x Y.  Default is display to the screen.
+"""
+
+import datetime
+from gtd import gtd_read
+import matplotlib.pyplot as plt
+import numpy as np
+from os import getenv
+import pandas as pd
+from sys import argv
+
+def plot_recent_days(num_days, ping_dimensions):
+    """Generate an activity plot, one band per day.
+
+    Show num_days days (wall time, even for days with no activity) with
+    the most recent at the bottom.
+
+    If ping_dimensions is not None, it is a tuple (x,y) specifying the
+    dimensions of the png graphic to produce.  Otherwise, display to the screen.
+    """
+    data_dir = '{home}/data/gtd'.format(home=getenv('HOME'))
+    dfd = gtd_read(data_dir)
+    df = dfd['tasks'].loc[:, ['datetime', 'hostname']]
+
+    # We'll first filter to a bit more than the range we want so that
+    # we have less data, then append a date field and do the precise
+    # filter.
+    df = df[df.datetime > np.datetime64(datetime.datetime.now()) - np.timedelta64(num_days + 1, 'D')]
+    df['date'] = pd.Series([val.to_datetime().date() for val in df.datetime], index = df.index)
+    df['time'] = pd.Series([val.to_datetime().time() for val in df.datetime], index = df.index)
+    df['offset'] = pd.Series(3600 * t.hour + 60 * t.minute + t.second
+                             for t in df.time)
+    first_day = np.datetime64(datetime.date.today()) - np.timedelta64(num_days - 1, 'D')
+    df = df[df.date >= first_day]
+
+    print('first_day=', first_day)
+    print('dates=', df.date.unique())
+    
+    fig, ax = plt.subplots(num_days, sharex=True, sharey=True)
+    for day_num in range(num_days):
+        # TODO(jeff@purple.com): Should plot each host at a different y value.
+        this_day = df[df.date == first_day + day_num]
+        #ax[day_num].plot(this_day.offset.as_matrix(), np.ones(len(this_day)), 'o')
+        ax[day_num].plot(this_day.time.as_matrix(), np.ones(len(this_day)), 'o')
+        #ax[day_num].set_ylabel(datetime.date.fromordinal(first_day.toordinal() + day_num).isoformat(),
+        #                      rotation='horizontal', labelpad=40)
+        ax[day_num].set_ylabel(
+            (first_day + np.timedelta64(day_num, 'D')).astype(datetime.date).isoformat(),
+            rotation='horizontal',
+            labelpad=40)
+        ax[day_num].set_ybound(0.5, 1.5)
+        ax[day_num].set_position([0.1, 0.1, 8.0, 1.0])
+        ax[day_num].set_yticks([])
+        print('Finished with ax ', day_num, ' num_points=', len(this_day))
+    ax[0].set_title('Computer Use by Day')
+    min_tick = 0
+    max_tick = 86400
+    ax[0].set_xbound(lower=min_tick, upper=max_tick)
+    ax[0].set_xticks(np.linspace(min_tick, max_tick, 9))
+    fig.subplots_adjust(hspace=0)
+    #plt.show()         #TODO(jeff@purple.com): Or maybe render to png.
+    plt.savefig('test.png')
+
+def main():
+    """Do what we do."""
+    num_days = int(argv[1])
+    png_dimensions = (int(argv[2]), int(argv[3]))
+    plot_recent_days(num_days, png_dimensions)
+    
+
+if __name__ == '__main__':
+    main()
