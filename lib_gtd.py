@@ -2,13 +2,12 @@
 
 """Functions for reading and simple manipulation of gtd data."""
 
-import datetime
 from glob import glob
-import numpy as np
 from os import getenv
+from sys import argv
+import datetime
 import pandas as pd
 import re
-from sys import argv
 
 def get_hostnames(path):
     """Return a list of all hostnames and all data files participating in gtd.
@@ -41,11 +40,11 @@ def read_dataframe(filename):
     fields = [{'time': fields[0], 'label': fields[1] if len(fields) > 1 else ''}
               for fields in field_array
               if fields != ['']]
-    df = pd.DataFrame(fields)
-    df['datetime'] = df.apply(
+    dataframe = pd.DataFrame(fields)
+    dataframe['datetime'] = dataframe.apply(
         lambda row: datetime.datetime.fromtimestamp(int(row['time'])),
         axis=1)
-    return df
+    return dataframe
 
 def get_labels(filenames):
     """Read the gtd_* files.
@@ -57,18 +56,18 @@ def get_labels(filenames):
       label    - the user-supplied or observed label (task name)
 
     """
-    df = None
+    dataframe = None
     host_pattern = re.compile('^.*/gtd_')
     for filename in filenames:
         host = re.sub(host_pattern, '', filename)
         if host != filename:
             this_df = read_dataframe(filename)
             this_df['hostname'] = host
-            if df is None:
-                df = this_df
+            if dataframe is None:
+                dataframe = this_df
             else:
-                df = df.append(this_df)
-    return df
+                dataframe = dataframe.append(this_df)
+    return dataframe
 
 def get_tasks(filenames):
     """Read the host__time files.
@@ -91,7 +90,7 @@ def get_tasks(filenames):
             this_df['hostname'] = host
             dfs.append(this_df)
     return pd.concat(dfs)
-    
+
 def gtd_read(data_dir):
     """Read all the gtd data available.
 
@@ -126,6 +125,25 @@ def gtd_read(data_dir):
     return {'labels': labels,
             'tasks':  tasks}
 
+def gtd_dump(dfd, filename):
+    """Dump a pickled dictionary of dataframes from gtd_read().
+    """
+    for key, dataframe in dfd.items():
+        dataframe.to_pickle(filename + '.' + key)
+#    with open(filename, 'wb') as outfile_ptr:
+#        pickle.dump(dfd, outfile_ptr)
+
+def gtd_load(filename, element):
+    """Load a pickled file written via gtd_dump().
+
+    Element is a key in the dictionary returned by gtd_read().
+    The object returned is a single dataframe.
+    """
+#    with open(filename, 'rb') as read_ptr:
+#        dfd = pickle.load(read_ptr)
+    dataframe = pd.read_pickle(filename + '.' + element)
+    return dataframe
+
 def gtd_data_directory():
     """Return the name of the canonical data directory.
     """
@@ -137,14 +155,13 @@ def main():
         data_dir = argv[1]
     else:
         data_dir = gtd_data_directory()
-    if True:
-        dfd = gtd_read(data_dir)
-        print(('Read {num_labels} user-recorded labels and {num_tasks} ' +
-               'recorded tasks on {num_hosts} hosts.').format(
-                   num_labels=len(dfd['labels']),
-                   num_tasks=len(dfd['tasks']),
-                   num_hosts=len(dfd['labels']['hostname'].unique()),
-               ))
+    dfd = gtd_read(data_dir)
+    print(('Read {num_labels} user-recorded labels and {num_tasks} ' +
+           'recorded tasks on {num_hosts} hosts.').format(
+               num_labels=len(dfd['labels']),
+               num_tasks=len(dfd['tasks']),
+               num_hosts=len(dfd['labels']['hostname'].unique()),
+           ))
 
 if __name__ == '__main__':
     main()

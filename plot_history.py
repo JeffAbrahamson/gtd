@@ -6,13 +6,12 @@ If first and second arguments X and Y are present, generate a png with
 dimensions X x Y.  Default is display to the screen.
 """
 
-import datetime
-from gtd import gtd_read, gtd_data_directory
+from lib_gtd import gtd_load
+from optparse import OptionParser
 import matplotlib.pyplot as plt
-import pandas as pd
-from sys import argv
+import numpy as np
 
-def plot_history(png_dimensions):
+def plot_history(input_filename, output_filename, width, height):
     """Generate an activity plot.
 
     The horizontal axis is time (days), the vertical axis is minutes
@@ -23,30 +22,47 @@ def plot_history(png_dimensions):
     the screen.
 
     """
-    data_dir = gtd_data_directory()
-    dfd = gtd_read(data_dir)
-    tasks = dfd['tasks']
+    tasks = gtd_load(input_filename, 'tasks')
+    print('Dataframe loaded')
     tasks['minutes'] = tasks.apply(
         lambda row: 60 * row['datetime'].hour + row['datetime'].minute, axis=1)
+    print('Got minutes')
     first_task_date = min(tasks.datetime)
     tasks['day_index'] = tasks.apply(
         lambda row: (row['datetime'] - first_task_date).days, axis=1)
-    X = tasks.day_index
-    Y = tasks.minutes
-    plt.xlim(0, max(X))
+    prit('Got days')
+    x_points = tasks.day_index
+    y_points = 1440 - tasks.minutes
+    plt.xlim(0, max(x_points))
     plt.ylim(0, 1440)
-    plt.scatter(X, Y, edgecolors='none')
+    fig, ax = plt.subplots(1, 1)
+    ax.set_yticks(np.linspace(0, 1440, 9))
+    ax.set_yticklabels(['midnight', 21, 18, 15, 'noon', 9, 6, 3, 'midnight'])
+    print('Scattering points...')
+    plt.scatter(x_points, y_points, edgecolors='none')
     fig = plt.gcf()
-    print(png_dimensions)
-    fig.set_size_inches(png_dimensions[0], png_dimensions[1])
-    plt.savefig('history.png', dpi=100)
+    fig.set_size_inches(width, height)
+    plt.savefig(output_filename, dpi=100)
 
 def main():
     """Do what we do.
 
     Arguments are plot (w x h) in pixels divided by 100."""
-    png_dimensions = (int(argv[1]), int(argv[2]))
-    plot_history(png_dimensions)
+    parser = OptionParser()
+    parser.add_option("-i", "--input", dest="input_filename",
+                      help="input filename", metavar="FILE")
+    parser.add_option("-o", "--output", dest="output_filename",
+                      help="output (image) filename", metavar="FILE")
+    parser.add_option("-W", "--width",
+                      dest="width", default=20,
+                      help="Width in pixels/100 for output image")
+    parser.add_option("-H", "--height",
+                      dest="height", default=10,
+                      help="Height in pixels/100 for output image")
+
+    (options, args) = parser.parse_args()
+    plot_history(options.input_filename, options.output_filename, \
+                 options.width, options.height)
 
 if __name__ == '__main__':
     main()
