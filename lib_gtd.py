@@ -129,9 +129,9 @@ def gtd_dump(dfd, filename):
     """Dump a pickled dictionary of dataframes from gtd_read().
     """
     for key, dataframe in dfd.items():
-        dataframe.to_pickle(filename + '.' + key)
-#    with open(filename, 'wb') as outfile_ptr:
-#        pickle.dump(dfd, outfile_ptr)
+        output_filename = filename + '.' + key
+        dataframe.to_pickle(output_filename)
+        print('Wrote {fn}'.format(fn=output_filename))
 
 def gtd_load(filename, element):
     """Load a pickled file written via gtd_dump().
@@ -139,9 +139,9 @@ def gtd_load(filename, element):
     Element is a key in the dictionary returned by gtd_read().
     The object returned is a single dataframe.
     """
-#    with open(filename, 'rb') as read_ptr:
-#        dfd = pickle.load(read_ptr)
-    dataframe = pd.read_pickle(filename + '.' + element)
+    input_filename = filename + '.' + element
+    dataframe = pd.read_pickle(input_filename)
+    print('Read {fn}'.format(fn=input_filename))
     return dataframe
 
 def gtd_data_directory():
