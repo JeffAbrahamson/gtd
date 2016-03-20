@@ -10,6 +10,7 @@ from lib_gtd import gtd_load
 from optparse import OptionParser
 import datetime
 import matplotlib.cm as cm
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -63,6 +64,7 @@ def plot_history(input_filename, output_filename, width, height, color_hosts):
                     for index in range(len(hostnames))}
         print(hostnames)
         colors = cm.rainbow(np.linspace(0, 1, len(hostnames)))
+        legend = []
         for host_name in hostnames:
             host_tasks = tasks.loc[tasks['hostname'] == host_name]
             host_x_points = host_tasks.day_index
@@ -70,9 +72,8 @@ def plot_history(input_filename, output_filename, width, height, color_hosts):
             host_color = colors[host_map[host_name]]
             plt.scatter(host_x_points, host_y_points, color=host_color,
                         s=1, edgecolors='none')
-        plt.legend(['c{}'.format(i) for i in range(len(hostnames))],
-                   loc=2, bbox_to_anchor=(1.05, 1), borderaxespad=0.,
-                   fontsize=13)
+            legend.append(mpatches.Patch(color=host_color, label=host_name))
+        plt.legend(handles=legend)
     else:
         plt.scatter(x_points, y_points, s=1, edgecolors='none')
     fig = plt.gcf()
