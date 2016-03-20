@@ -24,15 +24,15 @@ def plot_history(input_filename, output_filename, width, height):
     """
     tasks = gtd_load(input_filename, 'tasks')
     print('Dataframe loaded')
-    tasks['minutes'] = tasks.apply(
+    minutes = tasks.apply(
         lambda row: 60 * row['datetime'].hour + row['datetime'].minute, axis=1)
     print('Got minutes')
     first_task_date = min(tasks.datetime)
-    tasks['day_index'] = tasks.apply(
+    day_index = tasks.apply(
         lambda row: (row['datetime'] - first_task_date).days, axis=1)
     print('Got days')
-    x_points = tasks.day_index
-    y_points = 1440 - tasks.minutes
+    x_points = day_index
+    y_points = 1440 - minutes
     plt.xlim(0, max(x_points))
     plt.ylim(0, 1440)
     fig, ax = plt.subplots(1, 1)
