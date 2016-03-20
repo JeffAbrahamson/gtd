@@ -11,7 +11,7 @@ import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 
-def plot_history(input_filename, output_filename, width, height,
+def plot_pauses(input_filename, output_filename, width, height,
                  max_pause, sum_pauses):
     """Generate an activity plot showing pauses
 
@@ -88,7 +88,7 @@ def main():
                       help="Height in pixels/100 for output image")
 
     (options, args) = parser.parse_args()
-    plot_history(options.input_filename, options.output_filename,
+    plot_pauses(options.input_filename, options.output_filename,
                  options.width, options.height,
                  options.max_pause, options.sum_pauses)
 
