@@ -9,10 +9,11 @@ dimensions X x Y.  Default is display to the screen.
 from lib_gtd import gtd_load
 from optparse import OptionParser
 import datetime
+import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
 
-def plot_history(input_filename, output_filename, width, height):
+def plot_history(input_filename, output_filename, width, height, color_hosts):
     """Generate an activity plot.
 
     The horizontal axis is time (days), the vertical axis is minutes
@@ -56,7 +57,24 @@ def plot_history(input_filename, output_filename, width, height):
     ax.set_yticks(np.linspace(0, 1440, 9))
     ax.set_yticklabels(['midnight', 21, 18, 15, 'noon', 9, 6, 3, 'midnight'])
     print('Scattering points...')
-    plt.scatter(x_points, y_points, s=1, edgecolors='none')
+    if color_hosts:
+        hostnames = tasks.hostname.unique()
+        host_map = {hostnames[index]: index
+                    for index in range(len(hostnames))}
+        print(hostnames)
+        colors = cm.rainbow(np.linspace(0, 1, len(hostnames)))
+        for host_name in hostnames:
+            host_tasks = tasks.loc[tasks['hostname'] == host_name]
+            host_x_points = host_tasks.day_index
+            host_y_points = 1440 - host_tasks.minutes
+            host_color = colors[host_map[host_name]]
+            plt.scatter(host_x_points, host_y_points, color=host_color,
+                        s=1, edgecolors='none')
+        plt.legend(['c{}'.format(i) for i in range(len(hostnames))],
+                   loc=2, bbox_to_anchor=(1.05, 1), borderaxespad=0.,
+                   fontsize=13)
+    else:
+        plt.scatter(x_points, y_points, s=1, edgecolors='none')
     fig = plt.gcf()
     fig.set_size_inches(width, height)
     plt.savefig(output_filename, dpi=100)
@@ -72,6 +90,9 @@ def main():
     parser.add_option("-o", "--output", dest="output_filename",
                       default='/tmp/gtd-history.png',
                       help="output (image) filename", metavar="FILE")
+    parser.add_option("--color-hosts", dest="color_hosts",
+                      default=False, action="store_true",
+                      help="Color different hosts differently")
     parser.add_option("-W", "--width",
                       dest="width", default=20,
                       help="Width in pixels/100 for output image")
@@ -81,7 +102,7 @@ def main():
 
     (options, args) = parser.parse_args()
     plot_history(options.input_filename, options.output_filename, \
-                 options.width, options.height)
+                 options.width, options.height, options.color_hosts)
 
 if __name__ == '__main__':
     main()
