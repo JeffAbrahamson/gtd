@@ -2,3 +2,6 @@ ipython
 matplotlib
 numpy
 pandas
+scipy
+sklearn
+sklearn-pandas
