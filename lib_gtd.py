@@ -89,7 +89,7 @@ def get_tasks(filenames):
             this_df = read_dataframe(filename)
             this_df['hostname'] = host
             dfs.append(this_df)
-    return pd.concat(dfs)
+    return pd.concat(dfs, ignore_index=True)
 
 def gtd_read(data_dir):
     """Read all the gtd data available.

@@ -44,14 +44,13 @@ def plot_recent_days(input_filename, output_filename, num_days,
                 np.timedelta64(num_days - 1, 'D')
     dataframe = dataframe[dataframe.date >= first_day]
 
-    print('first_day=', first_day)
-    print('dates=', dataframe.date.unique())
-
     fig, ax = plt.subplots(num_days, sharex=True, sharey=True)
     for day_num in range(num_days):
         # TODO(jeff@purple.com): Should plot each host at a different y value.
         this_day = dataframe[dataframe.date == first_day + day_num]
-        ax[day_num].plot(this_day.time.as_matrix(), np.ones(len(this_day)), 'o')
+        ax[day_num].plot(this_day.time.as_matrix(),
+                         np.ones(len(this_day)),
+                         '.')
         ax[day_num].set_ylabel(
             (first_day + np.timedelta64(day_num, 'D')).astype(
                 datetime.date).isoformat(),
@@ -60,7 +59,6 @@ def plot_recent_days(input_filename, output_filename, num_days,
         ax[day_num].set_ybound(0.5, 1.5)
         ax[day_num].set_position([0.1, 0.1, 8.0, 1.0])
         ax[day_num].set_yticks([])
-        print('Finished with ax ', day_num, ' num_points=', len(this_day))
     ax[0].set_title('Computer Use by Day')
     min_tick = 0
     max_tick = 86400
@@ -68,9 +66,9 @@ def plot_recent_days(input_filename, output_filename, num_days,
     ax[0].set_xticks(np.linspace(min_tick, max_tick, 9))
     fig.subplots_adjust(hspace=0)
     fig = plt.gcf()
-    print(width, height)
     fig.set_size_inches(width, height)
     plt.savefig(output_filename, dpi=100)
+    print('Wrote {fn}'.format(fn=output_filename))
 
 def main():
     """Do what we do."""
