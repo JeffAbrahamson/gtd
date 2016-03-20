@@ -5,8 +5,6 @@
 If a first and numeric argument is present, it is the number of days of
 history to show.  The default is ten.
 
-If a second and third arguments X and Y are present, generate a png with
-dimensions X x Y.  Default is display to the screen.
 """
 
 from lib_gtd import gtd_load

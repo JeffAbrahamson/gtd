@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 
 """Generate a plot of my time usage at my computer by day.
-
-If first and second arguments X and Y are present, generate a png with
-dimensions X x Y.  Default is display to the screen.
 """
 
 from lib_gtd import gtd_load
@@ -19,10 +16,6 @@ def plot_history(input_filename, output_filename, width, height, color_hosts):
 
     The horizontal axis is time (days), the vertical axis is minutes
     spent at my computer per day.
-
-    If png_dimensions is not None, it is a tuple (x,y) specifying the
-    dimensions of the png graphic to produce.  Otherwise, display to
-    the screen.
 
     """
     tasks = gtd_load(input_filename, 'tasks')
