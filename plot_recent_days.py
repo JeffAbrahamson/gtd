@@ -76,8 +76,10 @@ def main():
     """Do what we do."""
     parser = OptionParser()
     parser.add_option("-i", "--input", dest="input_filename",
+                      default='/tmp/gtd-data',
                       help="input filename", metavar="FILE")
     parser.add_option("-o", "--output", dest="output_filename",
+                      default='/tmp/gtd-recent-days.png',
                       help="output filename", metavar="FILE")
     parser.add_option(
         "-n", "--num-days",

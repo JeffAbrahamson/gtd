@@ -30,7 +30,7 @@ def plot_history(input_filename, output_filename, width, height):
     first_task_date = min(tasks.datetime)
     tasks['day_index'] = tasks.apply(
         lambda row: (row['datetime'] - first_task_date).days, axis=1)
-    prit('Got days')
+    print('Got days')
     x_points = tasks.day_index
     y_points = 1440 - tasks.minutes
     plt.xlim(0, max(x_points))
@@ -50,8 +50,10 @@ def main():
     Arguments are plot (w x h) in pixels divided by 100."""
     parser = OptionParser()
     parser.add_option("-i", "--input", dest="input_filename",
+                      default='/tmp/gtd-data',
                       help="input filename", metavar="FILE")
     parser.add_option("-o", "--output", dest="output_filename",
+                      default='/tmp/gtd-history.png',
                       help="output (image) filename", metavar="FILE")
     parser.add_option("-W", "--width",
                       dest="width", default=20,
