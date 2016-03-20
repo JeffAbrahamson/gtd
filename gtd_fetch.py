@@ -4,6 +4,7 @@
 """
 
 from lib_gtd import gtd_data_directory, gtd_read, gtd_dump
+from optparse import OptionParser
 from sys import argv
 
 def main():
@@ -11,13 +12,16 @@ def main():
 
     Write to output_filename.
     """
-    if len(argv) > 1:
-        output_filename = argv[1]
-    else:
-        output_filename = '/tmp/gtd-data'
+    opt = OptionParser()
+    opt.add_option('-o', '--output-filename', metavar='FILE',
+                   dest='output_filename',
+                   default='/tmp/gtd-data',
+                   help='Base filename to which to write summarized data')
+    (opts, args) = opt.parse_args()
+
     data_dir = gtd_data_directory()
     dfd = gtd_read(data_dir)
-    gtd_dump(dfd, output_filename)
+    gtd_dump(dfd, opts.output_filename)
 
 if __name__ == '__main__':
     main()
