@@ -15,7 +15,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 import matplotlib.pyplot as plt
 
-def plot_similar(input_filename, target, width, height):
+def plot_similar(input_filename, output_filename, target, width, height):
     """Find some phrases similar to target.
 
     """
@@ -24,6 +24,9 @@ def plot_similar(input_filename, target, width, height):
     labels = dataframe.label.unique()
     print('Got {n} labels.'.format(n=len(labels)))
     labels = np.random.choice(labels, len(labels) / 2, False)
+    if target not in labels:
+        labels = np.append(labels, target)
+    print('  Sub-sampled to {n} labels.'.format(n=len(labels)))
 
     print('Learning model...')
     vectorizer = HashingVectorizer(analyzer='word')
