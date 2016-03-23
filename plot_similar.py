@@ -23,7 +23,7 @@ def plot_similar(input_filename, output_filename, target, width, height):
         input_filename, 'tasks')
     labels = dataframe.label.unique()
     print('Got {n} labels.'.format(n=len(labels)))
-    labels = np.random.choice(labels, len(labels) / 2, False)
+    labels = np.random.choice(labels, len(labels) / 20, False)
     if target not in labels:
         labels = np.append(labels, target)
     print('  Sub-sampled to {n} labels.'.format(n=len(labels)))
@@ -47,16 +47,21 @@ def plot_similar(input_filename, output_filename, target, width, height):
     pos = mds.fit_transform(cosine_distance) # shape (n_components, n_samples)
     print('MDS projection completed.')
 
-    print('Scatting (among {n} points)...'.format(n=len(labels)))
+    print('Scattering (among {n} points)...'.format(n=len(labels)))
     for pattern_index in range(len(labels)):
+        distance = cosine_distance[target_index, pattern_index]
         pattern = labels[pattern_index]
         if pattern == target:
             color = 'black'
-        elif cosine_distance[target_index, pattern_index] < .5:
-            color = 'red'
+            ecolor = 'black'
+        elif distance < .5:
+            color = 'blue'
+            ecolor = 'none'
         else:
             color = 'cyan'
-        plt.scatter(pos[pattern_index, 0], pos[pattern_index, 1], color)
+            ecolor = 'none'
+        plt.scatter(x=pos[pattern_index, 0], y=pos[pattern_index, 1], \
+                    c=color, edgecolor=ecolor)
     fig = plt.gcf()
     fig.set_size_inches(width, height)
     plt.savefig(output_filename, dpi=100)
