@@ -1,10 +1,10 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 """Generate a plot of time spent in activities maching string by day.
 """
 
 from lib_gtd import gtd_load
-from optparse import OptionParser
+import argparse
 import datetime
 import matplotlib.cm as cm
 import matplotlib.patches as mpatches
@@ -55,26 +55,26 @@ def main():
     """Do what we do.
 
     Arguments are plot (w x h) in pixels divided by 100."""
-    parser = OptionParser()
-    parser.add_option("-i", "--input", dest="input_filename",
-                      default='/tmp/gtd-data',
-                      help="input filename", metavar="FILE")
-    parser.add_option("-o", "--output", dest="output_filename",
-                      default='/tmp/gtd-activity.png',
-                      help="output (image) filename", metavar="FILE")
-    parser.add_option("--activity", dest="activity",
-                      help="Activity to plot.")
-    parser.add_option("-W", "--width",
-                      dest="width", default=20,
-                      help="Width in pixels/100 for output image")
-    parser.add_option("-H", "--height",
-                      dest="height", default=10,
-                      help="Height in pixels/100 for output image")
-
-    (options, args) = parser.parse_args()
-    plot_history(options.input_filename, options.output_filename,
-                 options.width, options.height,
-                 options.activity.split(','))
+    parser = argparse.ArgumentParser()
+    named_args = parser.add_argument_group('arguments')
+    named_args.add_argument('-i', '--input-filename', type=str,
+                            default='/tmp/gtd-data',
+                            help='Path and filename prefix to pickled data file')
+    named_args.add_argument('-o', '--output-filename', type=str,
+                            default='/tmp/gtd-activity.png',
+                            help='Name of image file to output')
+    named_args.add_argument('--activity', type=str,
+                            help='A comma-separated list of activities to plot.  ' +
+                            'An event is an activity if the window title contains this string.')
+    named_args.add_argument('-W', '--width', default=20,
+                            help='Width in pixels/100 for output image')
+    named_args.add_argument('-H', '--height', default=10,
+                            help='Height in pixels/100 for output image')
+    # parser.add_argument('--verbose', dest='verbose', action='store_true')
+    args = parser.parse_args()
+    plot_history(args.input_filename, args.output_filename,
+                 args.width, args.height,
+                 args.activity.split(','))
 
 if __name__ == '__main__':
     main()
