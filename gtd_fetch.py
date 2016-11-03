@@ -1,10 +1,11 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 """Read and compute gtd data, dump to a file.
 """
 
-from lib_gtd import gtd_data_directory, gtd_read, gtd_dump
-from optparse import OptionParser
+from __future__ import print_function
+import argparse
+from lib_gtd import gtd_data_directory, gtd_data_img_directory, gtd_read, gtd_dump
 from sys import argv
 
 def main():
@@ -12,16 +13,18 @@ def main():
 
     Write to output_filename.
     """
-    opt = OptionParser()
-    opt.add_option('-o', '--output-filename', metavar='FILE',
-                   dest='output_filename',
-                   default='/tmp/gtd-data',
-                   help='Base filename to which to write summarized data')
-    (opts, args) = opt.parse_args()
+    parser = argparse.ArgumentParser()
+    named_args = parser.add_argument_group('arguments')
+    named_args.add_argument('--output-filename', type=str,
+                            default='/tmp/gtd-data',
+                            help='Path and filename prefix to which to write data')
+    # parser.add_argument('--verbose', dest='verbose', action='store_true')
+    args = parser.parse_args()
 
     data_dir = gtd_data_directory()
-    dfd = gtd_read(data_dir)
-    gtd_dump(dfd, opts.output_filename)
+    data_image_dir = gtd_data_img_directory()
+    dfd = gtd_read(data_dir, data_image_dir)
+    gtd_dump(dfd, args.output_filename)
 
 if __name__ == '__main__':
     main()

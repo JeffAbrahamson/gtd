@@ -1,12 +1,14 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 """Functions for reading and simple manipulation of gtd data."""
 
+from __future__ import print_function
 from glob import glob
 from os import getenv
-from sys import argv
+import cv2
 import datetime
 import pandas as pd
+import pickle
 import re
 
 def get_hostnames(path):
@@ -22,6 +24,28 @@ def get_hostnames(path):
     hosts.discard('gtd')
     return hosts, all_filenames
 
+host_map = {
+    'lorax': 'laptop',
+    'nantes': 'laptop',
+    'birdsong': 'desktop',
+    'starshine': 'laptop',
+    'siegfried': 'desktop'
+}
+def get_host_class(hostname):
+    """Return laptop or desktop.
+    """
+    try:
+        return host_map[hostname]
+    except:
+        return 'unknown_host_class'
+
+def get_image_filenames(path):
+    """Return a list of all image filenames participating in gtd.
+    """
+    all_filenames = glob(path + '/*png')
+    print('Got {n} image filenames'.format(n=len(all_filenames)))
+    return all_filenames
+
 def read_dataframe(filename):
     """Read a single file and return its canonical dataframe.
 
@@ -35,7 +59,7 @@ def read_dataframe(filename):
         lines = contents.decode('utf-8').split('\n')
     except UnicodeDecodeError:
         lines = contents.decode('iso-8859-15').split('\n')
-    field_array = [line.split(sep=' ', maxsplit=1)
+    field_array = [line.split(' ', 1)
                    for line in lines]
     fields = [{'time': fields[0], 'label': fields[1] if len(fields) > 1 else ''}
               for fields in field_array
@@ -44,7 +68,85 @@ def read_dataframe(filename):
     dataframe['datetime'] = dataframe.apply(
         lambda row: datetime.datetime.fromtimestamp(int(row['time'])),
         axis=1)
+    dataframe['weekday'] = dataframe.apply(lambda row: row['datetime'].isoweekday(), axis=1)
+    dataframe['hours'] = dataframe.apply(lambda row: row['datetime'].hour, axis=1)
+    dataframe['minutes'] = dataframe.apply(
+        lambda row: row['datetime'].hour * 60 + row['datetime'].minute,
+        axis=1)
     return dataframe
+
+def image_to_histograms(image_filename):
+    """Read an image, return a triple of histograms.
+
+    The histograms are linear histograms of red, green, and blue
+    intensities respectively.
+
+    """
+    image = cv2.imread(image_filename)
+    red   = cv2.calcHist([image], channels=[0], mask=None, histSize=[256], ranges=[0,256])
+    green = cv2.calcHist([image], channels=[1], mask=None, histSize=[256], ranges=[0,256])
+    blue  = cv2.calcHist([image], channels=[2], mask=None, histSize=[256], ranges=[0,256])
+    return (red, green, blue)
+
+def append_image_row(df_list, time_str, host_str, image_name):
+    """Append a row to a list.
+    """
+    red, green, blue = image_to_histograms(image_name)
+    df_list.append({'hostname': host_str,
+                    'time': time_str,
+                    'red': red,
+                    'green': green,
+                    'blue': blue,
+                   })
+
+def join_images(dataframe, image_filenames):
+    """Join image features to the dataframe based on host and time.
+
+    This will return a new dataframe that right joins the existing
+    dataframe with the images.  That is, rows without images are
+    silently dropped.
+
+    """
+    time_host_df = dataframe.loc[:, ['time', 'hostname']]
+    time_host_dict = {row['time']: row['hostname']
+                      for row in time_host_df.to_records()}
+    with open('/tmp/time_host_dict', 'w') as f:
+        pickle.dump(time_host_dict, f)
+    df_list = []                # Build a list to make a dataframe.
+    num_found = 0
+    num_found_minus = 0
+    num_missed = 0
+    num_parse_errors = 0
+    host_time_pattern = re.compile('^.*/([a-z]*)_([0-9]*)\\.[a-z]*$')
+    for image_name in image_filenames:
+        host_time_match = re.match(host_time_pattern, image_name)
+        if host_time_match is None:
+            print('Failed to parse filename: {fn}'.format(fn=image_name))
+            num_parse_errors += 1
+        else:
+            image_host = host_time_match.groups()[0]
+            image_time = host_time_match.groups()[1]
+            if image_time in time_host_dict and \
+               time_host_dict[image_time] == image_host:
+                append_image_row(df_list, image_time, image_host, image_name)
+                num_found += 1
+            else:
+                # Maybe the snapshot happened a smidgeon after the
+                # window label was recorded.
+                image_time_minus = str(int(image_time) - 1)
+                if image_time_minus in time_host_dict and \
+                   time_host_dict[image_time_minus] == image_host:
+                    append_image_row(df_list, image_time_minus, image_host, image_name)
+                    num_found_minus = 0
+                else:
+                    print('Failed to match {fn}'.format(fn=image_name))
+                    num_missed += 1
+    print('Joining: found {f} at first, {p} more at -1, {m} missed, {pe} parse errors'.format(
+        f=num_found, p=num_found_minus, m=num_missed, pe=num_parse_errors))
+    image_dataframe = pd.DataFrame(df_list)
+    joined_dataframe = pd.merge(dataframe, image_dataframe, how='right',
+                                on=['time', 'hostname'])
+    return joined_dataframe
 
 def get_labels(filenames):
     """Read the gtd_* files.
@@ -69,7 +171,7 @@ def get_labels(filenames):
                 dataframe = dataframe.append(this_df)
     return dataframe
 
-def get_tasks(filenames):
+def get_tasks(filenames, image_filenames):
     """Read the host__time files.
 
     Return a DataFrame with the following columns:
@@ -77,6 +179,9 @@ def get_tasks(filenames):
       time     - seconds since epoch at which the label was noted
       datetime - python datetime at which label was noted
       label    - the user-supplied or observed label (task name)
+      weekday  - Monday == 1 ... Sunday == 7 (UTC)
+      hours    - hour of day (UTC)
+      minutes  - minutes since midnight (UTC)
 
     """
     dfs = []
@@ -88,10 +193,15 @@ def get_tasks(filenames):
             # And task_match.groups()[1] is the session start time
             this_df = read_dataframe(filename)
             this_df['hostname'] = host
+            this_df['host_class'] = this_df.apply(
+                lambda row: get_host_class(row['hostname']),
+                axis=1)
             dfs.append(this_df)
-    return pd.concat(dfs, ignore_index=True)
+    dataframe = pd.concat(dfs, ignore_index=True)
+    image_dataframe = join_images(dataframe, image_filenames)
+    return dataframe, image_dataframe
 
-def gtd_read(data_dir):
+def gtd_read(data_dir, image_data_dir):
     """Read all the gtd data available.
 
     Path is the directory in which gtd data files live.
@@ -120,10 +230,13 @@ def gtd_read(data_dir):
 
     """
     hosts, filenames = get_hostnames(data_dir)
+    image_filenames = get_image_filenames(image_data_dir)
     labels = get_labels(filenames)
-    tasks = get_tasks(filenames)
+    tasks, image_tasks = get_tasks(filenames, image_filenames)
     return {'labels': labels,
-            'tasks':  tasks}
+            'tasks':  tasks,
+            'image_tasks': image_tasks,
+    }
 
 def gtd_dump(dfd, filename):
     """Dump a pickled dictionary of dataframes from gtd_read().
@@ -149,17 +262,21 @@ def gtd_data_directory():
     """
     return '{home}/data/gtd'.format(home=getenv('HOME'))
 
+def gtd_data_img_directory():
+    """Return the name of the canonical data directory.
+    """
+    return '{home}/data/gtd-img'.format(home=getenv('HOME'))
+
 def main():
     """The main section is not particularly useful except as documentation."""
-    if len(argv) > 1:
-        data_dir = argv[1]
-    else:
-        data_dir = gtd_data_directory()
-    dfd = gtd_read(data_dir)
+    data_dir = gtd_data_directory()
+    data_img_dir = gtd_data_img_directory()
+    dfd = gtd_read(data_dir, data_img_dir)
     print(('Read {num_labels} user-recorded labels and {num_tasks} ' +
-           'recorded tasks on {num_hosts} hosts.').format(
+           'recorded tasks ({num_images} images) on {num_hosts} hosts.').format(
                num_labels=len(dfd['labels']),
                num_tasks=len(dfd['tasks']),
+               num_images=len(dfd['image_tasks']),
                num_hosts=len(dfd['labels']['hostname'].unique()),
            ))
 
