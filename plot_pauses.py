@@ -1,18 +1,17 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 """Generate a plot of my pause behaviour by day.
 """
 
+from __future__ import print_function
 from lib_gtd import gtd_load
-from optparse import OptionParser
+import argparse
 import datetime
-import matplotlib.cm as cm
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
-import numpy as np
 
 def plot_pauses(input_filename, output_filename, width, height,
-                 max_pause, sum_pauses):
+                max_pause, sum_pauses):
     """Generate an activity plot showing pauses
 
     The horizontal axis is time (days), the vertical axis is minutes
@@ -27,7 +26,6 @@ def plot_pauses(input_filename, output_filename, width, height,
                                   row['datetime'].day), axis=1)
     print('Got dates')
     x_dates = []
-    #x_offsets = []
     y_sums = []
     y_max = []
     date_groups = tasks.groupby(['date'])
@@ -46,7 +44,6 @@ def plot_pauses(input_filename, output_filename, width, height,
                     max_interval = max(interval_minutes, max_interval)
             last_time = this_time
         x_dates.append(group_date)
-        #x_offsets.append(row.offset)
         y_sums.append(sum_interval)
         y_max.append(max_interval)
 
@@ -67,30 +64,28 @@ def main():
     """Do what we do.
 
     Arguments are plot (w x h) in pixels divided by 100."""
-    parser = OptionParser()
-    parser.add_option("-i", "--input", dest="input_filename",
-                      default='/tmp/gtd-data',
-                      help="input filename", metavar="FILE")
-    parser.add_option("-o", "--output", dest="output_filename",
-                      default='/tmp/gtd-pauses.png',
-                      help="output (image) filename", metavar="FILE")
-    parser.add_option("--max-pause", dest="max_pause",
-                      default=60, type=int,
-                      help="Maximum pause length in minutes above which to ignore")
-    parser.add_option("--sum", dest="sum_pauses",
-                      default=False, action="store_true",
-                      help="Show sum of day's pauses rather than maximum")
-    parser.add_option("-W", "--width",
-                      dest="width", default=20,
-                      help="Width in pixels/100 for output image")
-    parser.add_option("-H", "--height",
-                      dest="height", default=10,
-                      help="Height in pixels/100 for output image")
+    parser = argparse.ArgumentParser()
+    named_args = parser.add_argument_group('arguments')
+    named_args.add_argument('-i', '--input-filename', type=str,
+                            default='/tmp/gtd-data',
+                            help='Path and filename prefix to pickled data file')
+    named_args.add_argument('-o', '--output-filename', type=str,
+                            default='/tmp/gtd-activity.png',
+                            help='Name of image file to output')
+    named_args.add_argument('--max-pause', type=int, default=60,
+                            help='Maximum pause length in minutes above which to ignore')
+    named_args.add_argument('--sum', action='store_true',
+                            help="Show sum of day's pauses rather than maximum")
+    named_args.add_argument('-W', '--width', default=20,
+                            help='Width in pixels/100 for output image')
+    named_args.add_argument('-H', '--height', default=10,
+                            help='Height in pixels/100 for output image')
+    # parser.add_argument('--verbose', dest='verbose', action='store_true')
+    args = parser.parse_args()
 
-    (options, args) = parser.parse_args()
-    plot_pauses(options.input_filename, options.output_filename,
-                 options.width, options.height,
-                 options.max_pause, options.sum_pauses)
+    plot_pauses(args.input_filename, args.output_filename,
+                args.width, args.height,
+                args.max_pause, args.sum)
 
 if __name__ == '__main__':
     main()
