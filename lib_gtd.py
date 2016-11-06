@@ -59,8 +59,7 @@ def read_dataframe(filename):
         lines = contents.decode('utf-8').split('\n')
     except UnicodeDecodeError:
         lines = contents.decode('iso-8859-15').split('\n')
-    field_array = [line.split(' ', 1)
-                   for line in lines]
+    field_array = [line.split(' ', 1) for line in lines]
     fields = [{'time': fields[0], 'label': fields[1] if len(fields) > 1 else ''}
               for fields in field_array
               if fields != ['']]
@@ -152,7 +151,36 @@ def join_images(dataframe, image_filenames):
                                 on=['time', 'hostname'])
     return joined_dataframe
 
-def get_labels(filenames):
+def get_labels():
+    """Read the labels files.
+
+    Return a DataFrame with the following columns:
+      hostname - the host on which the label was noted
+      time     - seconds since epoch at which the label was noted
+      label    - the user-supplied or observed label (task name)
+
+    """
+    dataframe = None
+    filename = gtd_label_name()
+    labels = []
+    try:
+        with open(filename, 'rb') as file_read_ptr:
+            contents = file_read_ptr.read()
+    except IOError:
+        print('Failed to open label file, assuming empty')
+        return pd.DataFrame(columns=['time', 'hostname', 'label'])
+    try:
+        lines = contents.decode('utf-8').split('\n')
+    except UnicodeDecodeError:
+        lines = contents.decode('iso-8859-15').split('\n')
+    field_array = [line.split('\t', 2) for line in lines]
+    fields = [{'time': fields[0], 'hostname': fields[1], 'label': fields[2]}
+              for fields in field_array
+              if fields != ['']]
+    dataframe = pd.DataFrame(fields)
+    return dataframe
+
+def get_labels_OLD(filenames):
     """Read the gtd_* files.
 
     Return a DataFrame with the following columns:
@@ -210,15 +238,17 @@ def gtd_read(data_dir, image_data_dir):
 
     Path is the directory in which gtd data files live.
 
-    The gtd data files are of two types: label data and task data.
-    Labels are user-provided names for the purposes of semi-supervised
-    learning (or providing names after unsupervised learning.  Tasks
-    are observations of my behaviour.
+    The gtd data files are of three types: label data, old label data,
+    and task data.  Labels are user-provided names for the purposes of
+    semi-supervised learning (or providing names after unsupervised
+    learning.  Tasks are observations of my behaviour.  The old labels
+    were not synchronised to actual events.  The new labels are
+    synchronised to events.
 
-    Label data files are named 'gtd_<hostname>' and contain time (in
-    seconds since the epoch), a space, and the name of the task that I
-    think I was performing at that time.  The task name itself could
-    contain spaces.
+    (Old) label data files are named 'gtd_<hostname>' and contain time
+    (in seconds since the epoch), a space, and the name of the task
+    that I think I was performing at that time.  The task name itself
+    could contain spaces.
 
     Task data files are named '<machine>__<session-start-time>'.  The
     session start time has format YYYY-MM-DD_HHMMSS.  The file
@@ -235,9 +265,11 @@ def gtd_read(data_dir, image_data_dir):
     """
     hosts, filenames = get_hostnames(data_dir)
     image_filenames = get_image_filenames(image_data_dir)
-    labels = get_labels(filenames)
+    labels_old = get_labels_OLD(filenames)
+    labels = get_labels()
     tasks, image_tasks = get_tasks(filenames, image_filenames)
     return {'labels': labels,
+            'labels_old': labels_old,
             'tasks':  tasks,
             'image_tasks': image_tasks,
     }
@@ -270,6 +302,16 @@ def gtd_data_img_directory():
     """Return the name of the canonical data directory.
     """
     return '{home}/data/gtd-img'.format(home=getenv('HOME'))
+
+def gtd_label_name():
+    """Return the full pathname to the label file.
+
+    Its format is TSV: time, hostname, label.
+
+    Use label_point.py to write lines to the file.
+    Use get_labels() to read it.
+    """
+    return gtd_data_directory() + '/labels'
 
 def main():
     """The main section is not particularly useful except as documentation."""
