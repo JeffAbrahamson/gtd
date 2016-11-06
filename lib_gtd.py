@@ -73,6 +73,10 @@ def read_dataframe(filename):
     dataframe['minutes'] = dataframe.apply(
         lambda row: row['datetime'].hour * 60 + row['datetime'].minute,
         axis=1)
+    dataframe['seconds'] = dataframe.apply(
+        lambda row: row['datetime'].hour * 3600 + row['datetime'].minute * 60
+        + row['datetime'].second,
+        axis=1)
     return dataframe
 
 def image_to_histograms(image_filename):
