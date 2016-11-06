@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python2
 
 """Generate a plot of my recent time usage at my computer.
 
@@ -8,12 +8,12 @@ history to show.  The default is ten.
 """
 
 from lib_gtd import gtd_load
-from optparse import OptionParser
 from sklearn.feature_extraction.text import HashingVectorizer
 from sklearn.manifold import MDS
 from sklearn.metrics.pairwise import cosine_similarity
-import numpy as np
+import argparse
 import matplotlib.pyplot as plt
+import numpy as np
 
 def plot_similar(input_filename, output_filename, target, width, height):
     """Find some phrases similar to target.
@@ -23,7 +23,7 @@ def plot_similar(input_filename, output_filename, target, width, height):
         input_filename, 'tasks')
     labels = dataframe.label.unique()
     print('Got {n} labels.'.format(n=len(labels)))
-    labels = np.random.choice(labels, len(labels) / 20, False)
+    labels = np.random.choice(labels, 1000, False)
     if target not in labels:
         labels = np.append(labels, target)
     print('  Sub-sampled to {n} labels.'.format(n=len(labels)))
@@ -68,29 +68,29 @@ def plot_similar(input_filename, output_filename, target, width, height):
     print('Wrote {fn}'.format(fn=output_filename))
 
 def main():
-    """Do what we do."""
-    parser = OptionParser()
-    parser.add_option("-i", "--input", dest="input_filename",
-                      default='/tmp/gtd-data',
-                      help="input filename", metavar="FILE")
-    parser.add_option("-o", "--output", dest="output_filename",
-                      default='/tmp/plot-similar.png',
-                      help="output filename", metavar="FILE")
-    parser.add_option(
-        "--target",
-        dest="target",
-        help="Target phrase for finding similar phrases")
-    parser.add_option("-W", "--width",
-                      dest="width", default=10,
-                      help="Width in pixels/100 for output image")
-    parser.add_option("-H", "--height",
-                      dest="height", default=6,
-                      help="Height in pixels/100 for output image")
+    """Do what we do.
 
-    (options, args) = parser.parse_args()
-    plot_similar(options.input_filename, options.output_filename, \
-                 options.target, \
-                 options.width, options.height)
+    Arguments are plot (w x h) in pixels divided by 100.
+    """
+    parser = argparse.ArgumentParser()
+    named_args = parser.add_argument_group('arguments')
+    named_args.add_argument('-i', '--input-filename', type=str,
+                            default='/tmp/gtd-data',
+                            help='Path and filename prefix to pickled data file')
+    named_args.add_argument('-o', '--output-filename', type=str,
+                            default='/tmp/gtd-activity.png',
+                            help='Name of image file to output')
+    named_args.add_argument('--target',
+                            help='Target phrase for finding simlar phrases')
+    named_args.add_argument('-W', '--width', default=20,
+                            help='Width in pixels/100 for output image')
+    named_args.add_argument('-H', '--height', default=10,
+                            help='Height in pixels/100 for output image')
+    # parser.add_argument('--verbose', dest='verbose', action='store_true')
+    args = parser.parse_args()
+    plot_similar(args.input_filename, args.output_filename, \
+                 args.target, \
+                 args.width, args.height)
 
 if __name__ == '__main__':
     main()
