@@ -12,6 +12,10 @@ import numpy as np
 
 def label_point(input_filename, output_filename):
     """Load tasks, query to label a random task, write to the label file.
+
+    To join labeled points to the full point table, use this inner join:
+
+      pd.merge(labels, tasks, on=['time', 'hostname'], how='inner')
     """
     tasks = gtd_load(input_filename, 'tasks')
     # Pick a random task label and select one task line with that

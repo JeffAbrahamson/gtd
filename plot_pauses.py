@@ -20,11 +20,6 @@ def plot_pauses(input_filename, output_filename, width, height,
     """
     tasks = gtd_load(input_filename, 'tasks')
     print('Dataframe loaded')
-    tasks['date'] = tasks.apply(
-        lambda row: datetime.date(row['datetime'].year,
-                                  row['datetime'].month,
-                                  row['datetime'].day), axis=1)
-    print('Got dates')
     x_dates = []
     y_sums = []
     y_max = []
@@ -59,6 +54,7 @@ def plot_pauses(input_filename, output_filename, width, height,
     fig = plt.gcf()
     fig.set_size_inches(width, height)
     plt.savefig(output_filename, dpi=100)
+    print('Wrote {fn}'.format(fn=output_filename))
 
 def main():
     """Do what we do.

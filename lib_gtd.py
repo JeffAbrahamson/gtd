@@ -7,9 +7,24 @@ from glob import glob
 from os import getenv
 import cv2
 import datetime
+import numpy as np
 import pandas as pd
 import pickle
 import re
+
+def filter_n_last_days(dataframe, num_days):
+    """Select the rows of df_tasks in the most recent n days.
+
+    If n is 0, select today's tasks.
+
+    The intent is that dataframe is a tasks dataframe.
+
+    """
+    first_day = np.datetime64(datetime.date.today()) - \
+                np.timedelta64(num_days - 1, 'D')
+    # Strangely, numpy.datetime64.tolist() returns a datetime.date.
+    restricted_dataframe = dataframe[dataframe.date >= first_day.tolist()]
+    return first_day, restricted_dataframe
 
 def get_hostnames(path):
     """Return a list of all hostnames and all data files participating in gtd.
@@ -76,6 +91,9 @@ def read_dataframe(filename):
         lambda row: row['datetime'].hour * 3600 + row['datetime'].minute * 60
         + row['datetime'].second,
         axis=1)
+    dataframe['date'] = pd.Series(
+        [val.to_datetime().date() for val in dataframe.datetime],
+        index=dataframe.index)
     return dataframe
 
 def image_to_histograms(image_filename):
@@ -155,9 +173,9 @@ def get_labels():
     """Read the labels files.
 
     Return a DataFrame with the following columns:
-      hostname - the host on which the label was noted
-      time     - seconds since epoch at which the label was noted
-      label    - the user-supplied or observed label (task name)
+      hostname   - the host on which the label was noted
+      time       - seconds since epoch at which the label was noted
+      task_label - the user-supplied or observed label (task name)
 
     """
     dataframe = None
@@ -168,13 +186,13 @@ def get_labels():
             contents = file_read_ptr.read()
     except IOError:
         print('Failed to open label file, assuming empty')
-        return pd.DataFrame(columns=['time', 'hostname', 'label'])
+        return pd.DataFrame(columns=['time', 'hostname', 'task_label'])
     try:
         lines = contents.decode('utf-8').split('\n')
     except UnicodeDecodeError:
         lines = contents.decode('iso-8859-15').split('\n')
     field_array = [line.split('\t', 2) for line in lines]
-    fields = [{'time': fields[0], 'hostname': fields[1], 'label': fields[2]}
+    fields = [{'time': fields[0], 'hostname': fields[1], 'task_label': fields[2]}
               for fields in field_array
               if fields != ['']]
     dataframe = pd.DataFrame(fields)
@@ -239,16 +257,21 @@ def gtd_read(data_dir, image_data_dir):
     Path is the directory in which gtd data files live.
 
     The gtd data files are of three types: label data, old label data,
-    and task data.  Labels are user-provided names for the purposes of
-    semi-supervised learning (or providing names after unsupervised
-    learning.  Tasks are observations of my behaviour.  The old labels
-    were not synchronised to actual events.  The new labels are
-    synchronised to events.
+    and task data.
+
+      - Labels are user-provided names for the purposes of semi-supervised
+        learning (or providing names after unsupervised learning.
+      - Tasks are observations of my behaviour.
+
+    The (new) labels are time synchronised to the task events, while
+    the old labels may occur anywhere in the interval between two
+    events or even adjoining a pause.
 
     (Old) label data files are named 'gtd_<hostname>' and contain time
     (in seconds since the epoch), a space, and the name of the task
     that I think I was performing at that time.  The task name itself
-    could contain spaces.
+    could contain spaces.  These files, and old labels, are probably
+    not useful anymore.
 
     Task data files are named '<machine>__<session-start-time>'.  The
     session start time has format YYYY-MM-DD_HHMMSS.  The file
@@ -257,8 +280,10 @@ def gtd_read(data_dir, image_data_dir):
     may have spaces.
 
     Return a dictionary, with elements
-      'labels' -> dataframe of (hostname, time, datetime, label)
-      'tasks'  -> dataframe of (hostname, time, datetime, taskname)
+      'labels'      -> dataframe of (hostname, time, label)
+      'labels_old'  -> dataframe of (hostname, time, datetime, label)
+      'tasks'       -> dataframe of (hostname, time, datetime, taskname)
+      'image_tasks' -> tasks dataframe plus red, green, and blue histograms
 
     The datetime field is in seconds since the epoch.
 

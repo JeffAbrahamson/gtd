@@ -21,11 +21,6 @@ def plot_history(input_filename, output_filename, width, height,
     """
     tasks = gtd_load(input_filename, 'tasks')
     print('Dataframe loaded')
-    tasks['date'] = tasks.apply(
-        lambda row: datetime.date(row['datetime'].year,
-                                  row['datetime'].month,
-                                  row['datetime'].day), axis=1)
-    print('Got dates')
     # Express as a date rather than datetime so that we don't cut days
     # in two at the first recorded time each day.
     first_task_date = datetime.date.fromtimestamp(
@@ -75,6 +70,7 @@ def plot_history(input_filename, output_filename, width, height,
     fig = plt.gcf()
     fig.set_size_inches(width, height)
     plt.savefig(output_filename, dpi=100)
+    print('Wrote {fn}'.format(fn=output_filename))
 
 def main():
     """Do what we do.

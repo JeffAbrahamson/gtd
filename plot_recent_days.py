@@ -7,7 +7,7 @@ history to show.  The default is ten.
 
 """
 
-from lib_gtd import gtd_load
+from lib_gtd import gtd_load, filter_n_last_days
 import argparse
 import datetime
 import matplotlib.pyplot as plt
@@ -22,7 +22,7 @@ def plot_recent_days(input_filename, output_filename, num_days,
     the most recent at the bottom.
     """
     dataframe = gtd_load(
-        input_filename, 'tasks').loc[:, ['datetime', 'host_class']]
+        input_filename, 'tasks').loc[:, ['date', 'datetime', 'host_class']]
 
     # We'll first filter to a bit more than the range we want so that
     # we have less data, then append a date field and do the precise
@@ -30,16 +30,10 @@ def plot_recent_days(input_filename, output_filename, num_days,
     dataframe = dataframe[dataframe.datetime >
                           np.datetime64(datetime.datetime.now()) -
                           np.timedelta64(num_days + 1, 'D')]
-    dataframe['date'] = pd.Series(
-        [val.to_datetime().date() for val in dataframe.datetime],
-        index=dataframe.index)
     dataframe['time'] = pd.Series(
         [val.to_datetime().time() for val in dataframe.datetime],
         index=dataframe.index)
-    first_day = np.datetime64(datetime.date.today()) - \
-                np.timedelta64(num_days - 1, 'D')
-    # Strangely, numpy.datetime64.tolist() returns a datetime.date.
-    dataframe = dataframe[dataframe.date >= first_day.tolist()]
+    first_day, dataframe = filter_n_last_days(dataframe, num_days)
 
     fig, ax = plt.subplots(num_days, sharex=True, sharey=True)
     for day_num in range(num_days):
