@@ -1,7 +1,13 @@
+HDFS
+h5py
 ipython
 matplotlib
 numpy
+opencv-python
 pandas
 scipy
 sklearn
 sklearn-pandas
+tensorflow
+keras
+pylint

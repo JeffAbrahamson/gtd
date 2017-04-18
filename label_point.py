@@ -6,35 +6,69 @@ We maintain a file of labels indexed by hostname and time.
 """
 
 from __future__ import print_function
-from lib_gtd import gtd_load, gtd_label_name
+from lib_gtd import gtd_load, gtd_dump
 import argparse
-import numpy as np
+import os
+import random
 
-def label_point(input_filename, output_filename):
-    """Load tasks, query to label a random task, write to the label file.
-
-    To join labeled points to the full point table, use this inner join:
-
-      pd.merge(labels, tasks, on=['time', 'hostname'], how='inner')
+def get_label():
+    """Request a label, return it (or None).
     """
-    tasks = gtd_load(input_filename, 'tasks')
-    # Pick a random task label and select one task line with that
-    # window name.
-    df_line = tasks[tasks.label == np.random.choice(tasks.label, 1)[0]]\
-              .loc[:, ['hostname', 'time', 'label']].head(1)
-    time = df_line.time.values[0]
-    hostname = df_line.hostname.values[0]
-    task_name = df_line.label.values[0]
-    print(task_name)
     print('Label?')
     label = raw_input()
     if '' == label:
         print('OK, ignored.')
-        return
-    if output_filename is None:
-        output_filename = gtd_label_name()
-    with open(output_filename, 'a') as file_append_ptr:
-        file_append_ptr.write('\t'.join([time, hostname, label]) + '\n')
+        return None
+    return label
+
+def label_one_point(unlabeled_data):
+    """Pick an unlabeled point at random and ask for a label.
+
+    Return true if we should continue, false to terminate.
+    """
+    key = random.choice(unlabeled_data.keys())
+    value = unlabeled_data[key]
+    if 'ground_truth_window_title_label' not in value:
+        print(value['window_title'])
+        label = get_label()
+        if None == label:
+            return False
+        value['ground_truth_window_title_label'] = label
+    if 'ground_truth_window_thumbnail_label' not in value and \
+       'window_thumbnail_filename' in value:
+        os.system('geeqie --remote {fn}'.format(
+            fn=value['window_thumbnail_filename']))
+        label = get_label()
+        if None == label:
+            return False
+        value['ground_truth_window_thumbnail_label'] = label
+    return True
+
+def label_points(filename, images):
+    """Load data, query for labels until an empty label.
+
+    Load data, filter to unlabeled points, and query for labels until
+    the user provides an empty label.  Save the dataset.
+
+    """
+    gtd_data = gtd_load(filename)
+    s = set()
+    for v in gtd_data.values():
+        s = s.union(v.keys())
+    print('Key set: ', s)
+    unlabeled_data = {k: v for k, v in gtd_data.iteritems() if
+                      'ground_truth_window_title_label' not in v or
+                      'ground_truth_window_thumbnail_label' not in v}
+    print('Found {n} unlabeled points'.format(n=len(unlabeled_data)))
+    if images:
+        unlabeled_data = {k: v for k, v in unlabeled_data.iteritems()
+                          if 'window_thumbnail_filename' in v}
+        print('With images: found {n} unlabeled points'.format(n=len(unlabeled_data)))
+    # The slice is not deep, so modifying the values will modify in
+    # the original gtd_data as well.  So we can persist.
+    while label_one_point(unlabeled_data):
+        pass
+    gtd_dump(filename, gtd_data)
 
 def main():
     """Pick a point at random and offer to label it.
@@ -44,13 +78,14 @@ def main():
     """
     parser = argparse.ArgumentParser()
     named_args = parser.add_argument_group('arguments')
-    named_args.add_argument('-i', '--input-filename', type=str,
-                            default='/tmp/gtd-data',
+    named_args.add_argument('-f', '--filename', type=str,
+                            default='/tmp/gtd_data.pickle',
                             help='Path and filename prefix to pickled data file')
-    named_args.add_argument('-o', '--output-filename', type=str,
-                            help='Name of label file to which to write')
+    named_args.add_argument('-i', '--images', dest='images',
+                            action='store_true',
+                            help='Filter to events with thumbnails')
     args = parser.parse_args()
-    label_point(args.input_filename, args.output_filename)
+    label_points(args.filename, args.images)
 
 if __name__ == '__main__':
     main()

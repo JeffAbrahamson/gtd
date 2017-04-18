@@ -55,5 +55,8 @@ target/
 
 # Virtualenv
 venv
+venv_vagrant
 
 *~
+data_copy
+.vagrant/
