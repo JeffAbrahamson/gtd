@@ -241,9 +241,13 @@ def gtd_read(data_dir, image_data_dir, gtd_data):
         gtd_data = {}
     filenames = get_window_title_filenames(data_dir)
     read_window_titles(filenames, gtd_data)
+    print('We have {num_wn} points after reading window titles'.format(
+        num_wn=len(gtd_data)))
 
     image_filenames = get_image_filenames(image_data_dir)
     scan_window_thumbnails(image_filenames, gtd_data)
+    print('We have {num_wn} points after reading window contents'.format(
+        num_wn=len(gtd_data)))
 
     return gtd_data
 
@@ -293,9 +297,18 @@ def gtd_data_img_directory():
         return '/vagrant/data_copy/gtd-img'
     return '{home}/data/gtd-img'.format(home=getenv('HOME'))
 
+def gtd_data_store():
+    """Return the path to the file where we store features.
+
+    Bug: no one creates the directory nor (better) checks for its
+    existence.
+
+    """
+    return '{home}/.gtd_analysis/data.pickle'.format(home=getenv('HOME'))
+
 def main():
     """The main section is not particularly useful except as documentation."""
-    filename = '/tmp/gtd_data.pickle'
+    filename = gtd_data_store()
     data_dir = gtd_data_directory()
     data_img_dir = gtd_data_img_directory()
     gtd_data = gtd_load(filename)

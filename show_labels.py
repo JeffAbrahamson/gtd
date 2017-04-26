@@ -5,7 +5,7 @@
 """
 
 from __future__ import print_function
-from lib_gtd import gtd_load
+from lib_gtd import gtd_load, gtd_data_store
 import argparse
 import numpy as np
 
@@ -34,7 +34,7 @@ def main():
     parser = argparse.ArgumentParser()
     named_args = parser.add_argument_group('arguments')
     named_args.add_argument('-f', '--filename', type=str,
-                            default='/tmp/gtd_data.pickle',
+                            default=gtd_data_store(),
                             help='Path and filename prefix to pickled data file')
     args = parser.parse_args()
     print_points(args.filename)
