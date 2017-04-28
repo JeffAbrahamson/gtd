@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 """Generate a plot of my recent time usage at my computer.
 
@@ -7,9 +7,10 @@ history to show.  The default is ten.
 
 """
 
+from __future__ import print_function
+import argparse
 from lib_gtd import gtd_load
 from operator import itemgetter
-from optparse import OptionParser
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import HashingVectorizer
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -19,8 +20,7 @@ def find_similar(input_filename, target):
     """Find some phrases similar to target.
 
     """
-    dataframe = gtd_load(
-        input_filename, 'tasks')
+    dataframe = gtd_load(input_filename, 'tasks')
     labels = dataframe.label.unique()
     print('Got {n} labels.'.format(n=len(labels)))
 
@@ -32,7 +32,7 @@ def find_similar(input_filename, target):
     max_score = .8
     vectorizer = TfidfVectorizer(analyzer='word')
     # vectorizer = TfidfVectorizer(analyzer='word', ngram_range=(1,2))
-    print('Learning model...')
+    print('Learning model (TF-IDF)...')
     ft_matrix = vectorizer.fit_transform(labels)
     print('Got model: {r}x{c}.'.format(r=ft_matrix.shape[0], c=ft_matrix.shape[1]))
     cosine_distance = 1 - cosine_similarity(ft_matrix)
@@ -63,17 +63,17 @@ def find_similar(input_filename, target):
 
 def main():
     """Do what we do."""
-    parser = OptionParser()
-    parser.add_option("-i", "--input", dest="input_filename",
-                      default='/tmp/gtd-data',
-                      help="input filename", metavar="FILE")
-    parser.add_option(
-        "--target",
-        dest="target",
-        help="Target phrase for finding similar phrases")
+    parser = argparse.ArgumentParser()
+    named_args = parser.add_argument_group('arguments')
+    named_args.add_argument('--input-filename', type=str,
+                            default='/tmp/gtd-data',
+                            help='Path and filename prefix to pickled data file')
+    named_args.add_argument('--target', type=str,
+                            help='Target phrase for finding similar phrases')
+    # parser.add_argument('--verbose', dest='verbose', action='store_true')
+    args = parser.parse_args()
 
-    (options, args) = parser.parse_args()
-    find_similar(options.input_filename, options.target)
+    find_similar(args.input_filename, args.target)
 
 if __name__ == '__main__':
     main()
