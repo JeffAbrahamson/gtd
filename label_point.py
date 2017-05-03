@@ -6,10 +6,11 @@ We maintain a file of labels indexed by hostname and time.
 """
 
 from __future__ import print_function
-from lib_gtd import gtd_load, gtd_dump, gtd_data_store
+from lib_gtd import gtd_load, gtd_dump, gtd_data_store, time_main
 import argparse
 import os
 import random
+import time
 
 def get_label():
     """Request a label, return it (or None).
@@ -88,4 +89,4 @@ def main():
     label_points(args.filename, args.images)
 
 if __name__ == '__main__':
-    main()
+    time_main(main)

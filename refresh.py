@@ -11,7 +11,8 @@ the moment.
 """
 
 from lib_gtd import gtd_data_store, gtd_data_directory, gtd_data_img_directory
-from lib_gtd import gtd_load, gtd_read, gtd_dump
+from lib_gtd import gtd_load, gtd_read, gtd_dump, time_main
+import time
 
 def main():
     """The main section is not particularly useful except as documentation."""
@@ -21,8 +22,8 @@ def main():
     gtd_data = gtd_load(filename)
     gtd_data = gtd_read(data_dir, data_img_dir, gtd_data)
     gtd_dump(filename, gtd_data)
-    print(('Read {num_objects} objects.').format(
+    print(('Read {num_objects} objects.\n').format(
         num_objects=len(gtd_data)))
 
 if __name__ == '__main__':
-    main()
+    time_main(main)

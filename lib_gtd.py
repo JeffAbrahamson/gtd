@@ -306,5 +306,17 @@ def gtd_data_store():
     """
     return '{home}/.gtd_analysis/data.pickle'.format(home=getenv('HOME'))
 
+def time_main(main):
+    """Run main and report on timing.
+    """
+    start_seconds = time.time()
+    main()
+    end_seconds = time.time()
+    elapsed_seconds = end_seconds - start_seconds
+    if elapsed_seconds < 300:
+        print('  Elapsed time: {t:.1f} seconds'.format(t=elapsed_seconds))
+    else:
+        print('  Elapsed time: {t:.1f} minutes'.format(t=elapsed_seconds / 60))
+
 if __name__ == '__main__':
     print("Don't run lib_gtd.  Consider refresh.py.  And look at README.md.")
