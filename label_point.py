@@ -6,11 +6,10 @@ We maintain a file of labels indexed by hostname and time.
 """
 
 from __future__ import print_function
-from lib_gtd import gtd_load, gtd_dump, gtd_data_store, time_main
 import argparse
-import os
 import random
-import time
+import os
+from lib_gtd import gtd_load, gtd_dump, gtd_data_store, time_main
 
 def print_set_in_columns(things):
     """Print set of things in several columns.
@@ -18,14 +17,18 @@ def print_set_in_columns(things):
     column = 1
     num_columns = 5
     line = '\n'
-    for item in things:
-        line += '{str:15s}'.format(str=item)
+    things_sorted = list(things)
+    things_sorted.sort()
+    for item in things_sorted:
+        line += '{str:17s}  '.format(str=item)
         if column % num_columns == 0:
             print(line)
             line = ''
             column = 1
         else:
             column += 1
+    if line != "":
+        print(line)
 
 def get_label(prompt, ontology, counter):
     """Request a label, return it (or None).
@@ -35,12 +38,13 @@ def get_label(prompt, ontology, counter):
         print_set_in_columns(ontology)
     else:
         print('counter=', counter)
-    print('==> {p}'.format(p=prompt))
+    print('==> {p}'.format(p=prompt.encode('utf-8')))
     print('Label?')
     label = raw_input()
     if '' == label:
         print('OK, ignored.')
         return None
+    ontology.add(label)
     return label
 
 def label_one_point(unlabeled_data,
@@ -60,7 +64,7 @@ def label_one_point(unlabeled_data,
     if 'ground_truth_window_title_label' not in value:
         label = get_label(value['window_title'], window_title_labels, num_title_requests)
         num_title_requests += 1
-        if None == label:
+        if label is None:
             return False
         if '-' == label:
             print('Skipped')
@@ -72,7 +76,7 @@ def label_one_point(unlabeled_data,
             fn=value['window_thumbnail_filename']))
         label = get_label("image", window_thumbnail_labels, num_thumbnail_requests)
         num_thumbnail_requests += 1
-        if None == label:
+        if label is None:
             return False
         if '-' == label:
             print('Skipped')
@@ -92,16 +96,16 @@ def label_points(filename, images):
     num_title_requests = 0
     num_thumbnail_requests = 0
     gtd_data = gtd_load(filename)
-    s = set()
+    keys = set()
     for point in gtd_data.values():
-        s = s.union(point.keys())
+        keys = keys.union(point.keys())
         if 'ground_truth_window_title_label' in point:
             window_title_labels.add(point['ground_truth_window_title_label'])
         if 'ground_truth_window_thumbnail_label' in point:
             window_thumbnail_labels.add(
                 point['ground_truth_window_thumbnail_label'])
 
-    print('Key set: ', s)
+    print('Key set: ', keys)
     unlabeled_data = {k: v for k, v in gtd_data.iteritems() if
                       'ground_truth_window_title_label' not in v or
                       'ground_truth_window_thumbnail_label' not in v}
