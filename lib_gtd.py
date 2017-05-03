@@ -306,16 +306,5 @@ def gtd_data_store():
     """
     return '{home}/.gtd_analysis/data.pickle'.format(home=getenv('HOME'))
 
-def main():
-    """The main section is not particularly useful except as documentation."""
-    filename = gtd_data_store()
-    data_dir = gtd_data_directory()
-    data_img_dir = gtd_data_img_directory()
-    gtd_data = gtd_load(filename)
-    gtd_data = gtd_read(data_dir, data_img_dir, gtd_data)
-    gtd_dump(filename, gtd_data)
-    print(('Read {num_objects} objects.').format(
-        num_objects=len(gtd_data)))
-
 if __name__ == '__main__':
-    main()
+    print("Don't run lib_gtd.  Consider refresh.py.  And look at README.md.")
