@@ -11,3 +11,5 @@ sklearn-pandas
 tensorflow
 keras
 pylint
+cython-plugin
+word2vec
