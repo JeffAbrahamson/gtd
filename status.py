@@ -18,6 +18,7 @@ def main():
     num_image_histograms = 0
     num_ground_truth_window_titles = 0
     num_ground_truth_images = 0
+    num_tfidf = 0
     for name, point in gtd_data.iteritems():
         if 'window_title' in point:
             # We expect this always to be true.
@@ -30,6 +31,8 @@ def main():
             num_ground_truth_window_titles += 1
         if 'ground_truth_window_thumbnail_label' in point:
             num_ground_truth_images += 1
+        if 'tf-idf' in point:
+            num_tfidf += 1
     print('\n')
     print('{p} points of which {missing} have no window title.'.format(
         p=num_points, missing=num_points - num_window_titles))
@@ -37,6 +40,7 @@ def main():
         img_fn=num_image_filenames, no_hist=num_image_filenames - num_image_histograms))
     print('{win} window titles are hand-labeled, {img} image thumbnails are hand-labeled'.format(
         win=num_ground_truth_window_titles, img=num_ground_truth_images))
+    print('{tfidf} points have tf-idf weights'.format(tfidf=num_tfidf))
     print
 
 if __name__ == '__main__':

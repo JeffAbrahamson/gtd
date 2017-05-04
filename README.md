@@ -10,3 +10,4 @@ Quite a bit of common infrastructure lives in `lib_gtd.py`.
 * `status.py` reports on basic feature stats.
 * `histogram_labels.py` provides a histogram of how many points are labeled and how.
 * `rename_label.py` corrects labels (somewhat crudely: all of one label becomes another).
+* `extract_features_tfidf.py` extracts tf-idf features from window titles and stores them in the gtd_data dict.
