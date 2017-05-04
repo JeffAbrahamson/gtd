@@ -21,6 +21,15 @@ def learn_nearest_neighbors(input_filename, output_model_filename):
 
     Persist the model for later use.
     """
+    gtd_data = gtd_load(filename)
+
+    if use_images:
+        gtd_data = {k: v for k, v in gtd_data.iteritems()
+                    if 'ground_truth_window_thumbnail_label' in v}
+    else:
+        gtd_data = {k: v for k, v in gtd_data.iteritems()
+                    if 'ground_truth_window_title_label' in v}
+
     all_tasks = gtd_load(input_filename, 'tasks')
     training_size = 1000
     tasks = all_tasks.sample(training_size, replace=False)
@@ -56,6 +65,7 @@ def classify_nearest_neighbors(input_filename, model_filename, num_days):
     """Classify the last num_days of points.
 
     """
+    gtd_data = gtd_load(filename)
     with open(model_filename, 'r') as file_read_ptr:
         [vectorizer, ft_matrix] = pickle.load(file_read_ptr)
     tasks = gtd_load(input_filename, 'tasks')
@@ -69,9 +79,6 @@ def main():
     Arguments are plot (w x h) in pixels divided by 100."""
     parser = argparse.ArgumentParser()
     named_args = parser.add_argument_group('arguments')
-    named_args.add_argument('-i', '--input-filename', type=str,
-                            default='/tmp/gtd-data',
-                            help='Path and filename prefix to pickled task data file')
     named_args.add_argument('-o', '--model-filename', type=str,
                             default='/tmp/nearest_neighbor',
                             help='Name of model file (to store if learn, to read otherwise)')
@@ -81,10 +88,11 @@ def main():
                             help='Show classification for the past num_days')
     # parser.add_argument('--verbose', dest='verbose', action='store_true')
     args = parser.parse_args()
+    data_filename = gtd_data_store()
     if args.learn:
         learn_nearest_neighbors(args.input_filename, args.model_filename)
         return
-    classify_nearest_neighbors(args.input_filename, args.model_filename, args.num_days)
+    classify_nearest_neighbors(data_filename, args.model_filename, args.num_days)
 
 if __name__ == '__main__':
-    main()
+    time_main(main)
